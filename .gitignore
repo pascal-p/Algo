@@ -1,0 +1,13 @@
+
+.idea/
+.lift/
+
+*.BAK
+*.class
+*.iml
+*.org 
+*.zip
+
+out/
+res/
+.git_/
