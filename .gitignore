@@ -7,10 +7,16 @@
 *.iml
 *.org 
 *.zip
+*.png
+*.jpg
+*.jpeg
 
 out/
 res/
 .git_/
+
+test*.java
+Test*.java
 
 w1/percolation/InteractivePercolationVisualizer.java
 w1/percolation/PercolationVisualizer.java
