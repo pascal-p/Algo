@@ -1,9 +1,59 @@
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 
 public class FastCollinearPoints {
     private final Point[] points;
+    private LineSegment[] lSeg;
     private int numSeg;
+
+    /* ********************************************************************************************************** */
+    // Cannot modify Point nor LineSegment, thus create a triple <Point_orig, Point_dest, slope>
+    private static class Triple {
+        private final Point orig, dest;
+        private final double slope;
+
+        public Triple() {
+            this.orig = null;
+            this.dest = null;
+            this.slope = 0.0;
+        }
+
+        public Triple(Point orig, Point dest, double slope) {
+            this.orig = orig;
+            this.dest = dest;
+            this.slope = slope;
+        }
+
+        public boolean cmp(Triple that) {
+            return this.orig.compareTo(that.orig) < 0 &&
+                    this.dest.compareTo(that.dest) == 0 &&
+                    Double.compare(this.slope, that.slope) == 0;
+        }
+
+        public String toString() {
+            return "<" + this.orig + ", " + this.dest + ", " + this.slope + ">";
+        }
+
+        public Comparator<Triple> destSlopeOrder() {
+            return new DestSlopeOrder();
+        }
+
+        static class DestSlopeOrder implements Comparator<Triple> {
+            public int compare(Triple t1, Triple t2) {
+                // int cmpO = t1.orig.compareTo(t2.orig);
+                int cmpD = t1.dest.compareTo(t2.dest);
+                int cmpS = Double.compare(t1.slope, t2.slope);
+
+                if (cmpD < 0) return -1;
+                if (cmpD > 0) return 1;
+
+                return cmpS;
+            }
+        }
+    }
+    /* ********************************************************************************************************** */
 
     public FastCollinearPoints(Point[] points) { // finds all line segments containing 4 points
         if (points == null) throw new IllegalArgumentException("Null points array given");
@@ -16,68 +66,67 @@ public class FastCollinearPoints {
             this.points[ix] = points[ix];
             Arrays.sort(this.points, 0, ix + 1);
         }
-        // Arrays.sort(this.points, 0, points.length);
         this.numSeg = 0;
+        calcSegments();
     }
 
     public int numberOfSegments() {
-        // the number of line segments
         return this.numSeg;
     }
 
     public LineSegment[] segments() {
-        // the line segments
-        if (this.points.length < 4) return new LineSegment[]{};
+        return Arrays.copyOf(this.lSeg, this.numSeg);
+    }
 
-        // printAry(this.points);
-        // int lim = 5 * this.points.length + 1;
-        // LineSegment[] lseg = new LineSegment[lim];
-        ArrayList<LineSegment> lseg = new ArrayList<LineSegment>();
+    // called from constructor and not from segment() method
+    private void calcSegments() {
+        if (this.points.length < 4) this.lSeg = new LineSegment[]{};
 
+        final ArrayList<Triple> lpt = new ArrayList<Triple>();
         int sz = this.points.length;
-        // outerloop:
         for (Point p0 : points) {
             sz--;
-            // System.out.println("Considering " + Integer.toString(sz) + " points - excluding <= p0: " + p0.toString());
-            Point[] pary = creatSortedCpyAry(p0, sz);
-            // printAry(pary);
+            Point[] pary = creatSortedCpyAry(p0, sz); // sort per order of slope
 
-            int len = 1; // len. monotony
+            int len = 1; // len. in term of points
             for (int ix = 1; ix < sz; ix++) {
-                //
-                // System.out.println("Slope: p0/p1: " + p0.slopeTo(pary[ix - 1]) + " / p0/p2: " + p0.slopeTo(pary[ix]) + " / len: " + len + " / ix: " + ix);
-                if (Double.compare(p0.slopeTo(pary[ix - 1]), p0.slopeTo(pary[ix])) == 0) { // compare in term of slope
+                if (Double.compare(p0.slopeTo(pary[ix - 1]), p0.slopeTo(pary[ix])) == 0) {
                     len++;
-                    continue;
+                    if (ix < sz) continue;
                 }
-
-                if (len >= 3) {
-                    // found colinear segment
-                    // System.out.println("\tFound colinear segment");
-                    LineSegment segment = new LineSegment(p0, pary[ix - 1]); // Line
-                    // Segment segment = new LineSegment(pary[ix - len], pary[ix - 1]);
-                    // lseg[this.numSeg++] = segment;
-                    lseg.add(segment);
+                if (len >= 3) { // found colinear segment
+                    lpt.add(new Triple(p0, pary[ix - 1], p0.slopeTo(pary[ix - 1])));
+                    this.numSeg++;
                 }
                 len = 1; // reset
             }
-
-            // last one possibly
-            if (len >= 3) {
-                // System.out.println("\tFound last colinear segment");
-                // found colinear segment
-                LineSegment segment = new LineSegment(p0, pary[sz - 1]); // LineSegment(pary[sz - len], pary[sz - 1]);
-                // lseg[this.numSeg++] = segment;
-                lseg.add(segment);
+            if (len >= 3) { // found last colinear segment
+                lpt.add(new Triple(p0, pary[sz - 1], p0.slopeTo(pary[sz - 1])));
+                this.numSeg++;
             }
 
             if (sz < 4) break; // no point checking further, not enough points
         }
-        // System.out.println("Done... ");
-        // resize to actual number of segments
-        LineSegment[] ary = new LineSegment[this.numSeg];
-        ary = lseg.toArray(ary); // Arrays.copyOf(lseg, this.numSeg);
-        return ary;
+        Collections.sort(lpt, new Triple().destSlopeOrder());
+        ArrayList<Integer> ixes = new ArrayList<Integer>();
+        int lim = this.numSeg, dup = 0;
+
+        for (int ix = 1; ix < lim; ix++) {
+            if (lpt.get(ix - 1).cmp(lpt.get(ix))) {
+                dup++;
+                if (ix < lim) continue;
+            }
+            ixes.add(ix - 1 - dup);
+            dup = 0;
+        }
+        if (lim - dup > 0) ixes.add(lim - dup - 1);
+        this.numSeg = ixes.size();
+        this.lSeg = new LineSegment[this.numSeg];
+        int jx = 0;
+        for (int ix : ixes) {
+            Triple t = lpt.get(ix);
+            this.lSeg[jx++] = new LineSegment(t.orig, t.dest);
+        }
     }
 
     private boolean find(Point px, int ix) {
@@ -93,7 +142,6 @@ public class FastCollinearPoints {
      */
     private Point[] creatSortedCpyAry(Point p, int sz) {
         Point[] ary = aryCpy(p, sz);
-        // printAry(ary);
         Arrays.sort(ary, 0, sz, p.slopeOrder()); // sort by slope
         return ary;
     }
@@ -101,24 +149,13 @@ public class FastCollinearPoints {
     private Point[] aryCpy(Point p, int sz) {
         Point[] ary = new Point[sz];
 
-        for (int ix = 0, jx = 0; ix < this.points.length; ix++) {
-            // System.out.print("\tix: " + Integer.toString(ix) + ", jx: " + Integer.toString(jx));
-
-            if (this.points[ix].compareTo(p) <= 0) {
-                //  System.out.println("\tSkipping ix: " + Integer.toString(ix));
-                continue;
-            }
-            // System.out.println(" => Copy: at ix: " + Integer.toString(ix) + ", jx: " + Integer.toString(jx));
+        int jx = 0;
+        for (int ix = 0; ix < this.points.length; ix++) {
+            if (this.points[ix].compareTo(p) <= 0) continue;
             ary[jx++] = this.points[ix];
         }
         return ary;
     }
 
-    private void printAry(Point[] ary) {
-        System.out.print("=> ");
-        for (Point p0 : ary) {
-            System.out.print(p0.toString() + "; ");
-        }
-        System.out.println("");
-    }
 }
+

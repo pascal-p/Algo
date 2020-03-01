@@ -69,7 +69,7 @@ public class Point implements Comparable<Point> {
     public double slopeTo(Point that) {
         /* YOUR CODE HERE */
         if (this.x == that.x && this.y == that.y) return M_INF; // both equals -> Double.NEGATIVE_INFINITY;
-        if (this.y == that.y) return ZERO; // horizontal slope +0.0
+        if (this.y == that.y) return ZERO;  // horizontal slope +0.0
         if (this.x == that.x) return P_INF; // vertical slope => Double.POSITIVE_INFINITY;
 
         double den = that.x - this.x;
@@ -95,8 +95,7 @@ public class Point implements Comparable<Point> {
         if (cmpy < 0) return -1;
 
         int cmpx = Integer.compare(this.x, that.x);
-        if (cmpy == 0 && cmpx < 0) return -1;
-        if (cmpy == 0 && cmpx == 0) return 0;
+        if (cmpy == 0) return cmpx;
 
         return 1;
     }
