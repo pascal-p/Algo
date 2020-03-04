@@ -28,7 +28,7 @@ public class Solver {
         }
 
         public int compareTo(SearchNode that) {
-            // ordered by priority == manHanttanDist (or hammingDist) + numMoves
+            // ordered by priority == ManHanttan dist (or Hamming dist) + numMoves
             int prioThis = this.dist + this.numMoves;
             int prioThat = that.dist + that.numMoves;
             return prioThis - prioThat;
@@ -75,7 +75,7 @@ public class Solver {
         }
         else { // unsolvable
             this.totMoves = -1;
-            this.lastSeartchNode = null; // snode;
+            this.lastSeartchNode = null;
             this.solvable = 2;
         }
     }
@@ -92,8 +92,10 @@ public class Solver {
 
     // sequence of boards in a shortest solution
     public Iterable<Board> solution() {
-        Stack<Board> sb = new Stack<>();
         SearchNode cnode = this.lastSeartchNode;
+        if (cnode == null) return null;
+        
+        Stack<Board> sb = new Stack<>();
         while (cnode != null) {
             sb.push(cnode.board);
             cnode = cnode.prev;
