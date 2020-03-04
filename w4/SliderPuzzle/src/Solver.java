@@ -8,26 +8,26 @@ public class Solver {
     private final SearchNode lastSeartchNode;
 
     private class SearchNode implements Comparable<SearchNode> {
-        Board board;
+        final Board board;
         int numMoves = 0;
-        SearchNode prev = null;
-        int dist = -1;
+        final SearchNode prev;
+        private final int dist;
 
         public SearchNode(Board board) {
             this.board = board;
+            this.prev = null;
+            this.dist = board.manhattan();
         }
 
         public SearchNode(Board board, int numMoves, SearchNode prev) {
             this.board = board;
             this.numMoves = numMoves;
             this.prev = prev;
+            this.dist = board.manhattan();
         }
 
         public int compareTo(SearchNode that) {
             // ordered by priority == manHanttanDist (or hammingDist) + numMoves
-            if (this.dist == -1) this.dist = this.board.manhattan();
-            if (that.dist == -1) that.dist = that.board.manhattan();
-
             int prioThis = this.dist + this.numMoves;
             int prioThat = that.dist + that.numMoves;
             return prioThis - prioThat;
