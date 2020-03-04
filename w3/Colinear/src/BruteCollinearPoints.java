@@ -46,7 +46,6 @@ public class BruteCollinearPoints {
 
         final ArrayList<LineSegment> lseg = new ArrayList<LineSegment>();
 
-        outerloop:
         for (Point p0 : this.points) {
             for (Point p1 : this.points) {
                 if (p1.compareTo(p0) <= 0) continue;
