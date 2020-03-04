@@ -1,5 +1,4 @@
 import edu.princeton.cs.algs4.Queue;
-import edu.princeton.cs.algs4.StdRandom;
 
 public class Board {
     private final int[][] tiles;
@@ -106,27 +105,24 @@ public class Board {
 
     // a board that is obtained by exchanging any pair of tiles
     public Board twin() {
-        int px1 = StdRandom.uniform(1, n * n + 1);
-        int px2 = n * n - px1;
+        int[][] ntiles = cpyBoard(this.tiles);
 
-        px2 = (px2 == px1) ? (px1 + 1) % (n * n) : px2;
-        px2 = (px2 == 0) ? 1 : px2;
-        assert px1 != px2 : "px1 must be different from px2, but got equality px1: " + px1;
+        // exchange first and last (but avoid blank tile)
+        int px1 = 1, px2 = n * n;
         int[] coordO = pos2Coord(px1);
         int[] coordD = pos2Coord(px2);
 
-        // make sure tile at coordO or coordD is not 0 (blank square)
-        if (this.tiles[coordO[0]][coordO[1]] == 0) { // change it and avoid picking px2
-            px1 = sample(px1, px2);
+        if (this.tiles[coordO[0]][coordO[1]] == 0) {
+            px1++;
             coordO = pos2Coord(px1);
         }
-        else if (this.tiles[coordD[0]][coordD[1]] == 0) { // change it and avoid picking px1
-            px2 = sample(px2, px1);
+        else if (this.tiles[coordD[0]][coordD[1]] == 0) {
+            px2--;
             coordD = pos2Coord(px2);
         }
         assert px1 != px2 : "px1 must be different from px2, but got equality px1: " + px1;
-        swapTile(this.tiles, coordO[0], coordO[1], coordD[0], coordD[1]);
-        return this;
+        swapTile(ntiles, coordO[0], coordO[1], coordD[0], coordD[1]);
+        return new Board(ntiles); // board should be immutable
     }
 
     /*
@@ -193,7 +189,7 @@ public class Board {
     }
 
     /*
-     * 1 <= px <= n
+     * 1 <= px <= n*n
      * ix in [0, n), jx in [0, n)
      */
     private int[] pos2Coord(int px) {
@@ -203,20 +199,6 @@ public class Board {
         assert jx >= 0 && jx < n : "jx should be between 0 and " + (n - 1) + " / got: " + jx;
         int[] coord = { ix, jx };
         return coord;
-    }
-
-    private int sample(int px, int py) {
-        int nx = px;
-        int n2 = n * n;
-        while (true) {
-            nx++;
-            if (nx > n2) nx = 1;
-            if (nx != py) break;
-        }
-        assert nx != px && nx != py :
-                "new px should be different from original px: " + px + " and py: " + py
-                        + " / got: " + nx;
-        return nx;
     }
 
     private int[] locateBlank() {
@@ -400,13 +382,13 @@ public class Board {
         assert hdAct == hdExp :
                 "cand board should have hamming dist of " + hdExp + ", got: " + hdAct;
 
-        b11 = b11.twin();
+        Board b21 = b11.twin();
         // FIXME
-        // System.out.println("twin board: \n" + b11);
-        // hdExp = 2; // because we swapped 2 elements
-        // hdAct = b11.hamming();
-        // assert hdAct == hdExp :
-        //         "cand board should have hamming dist of " + hdExp + ", got: " + hdAct;
+        System.out.println("twin board: \n" + b21);
+        hdExp = 2; // because we swapped 2 elements
+        hdAct = b21.hamming();
+        assert hdAct == hdExp :
+                "cand board should have hamming dist of " + hdExp + ", got: " + hdAct;
         System.out.println("testTwin: ok");
     }
 }
