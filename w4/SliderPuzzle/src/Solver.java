@@ -6,12 +6,13 @@ import edu.princeton.cs.algs4.StdOut;
 public class Solver {
     private final int totMoves;
     private final SearchNode lastSeartchNode;
+    private char solvable = 0;
 
     private class SearchNode implements Comparable<SearchNode> {
-        final Board board;
-        int numMoves = 0;
-        final SearchNode prev;
-        private final int dist;
+        private final Board board;
+        private int numMoves = 0;
+        private final SearchNode prev;
+        private final int dist; // cache distance
 
         public SearchNode(Board board) {
             this.board = board;
@@ -39,19 +40,18 @@ public class Solver {
         if (initial == null)
             throw new IllegalArgumentException("initial should not be null");
 
-        MinPQ<SearchNode> pq = new MinPQ<SearchNode>(); // init pq
+        MinPQ<SearchNode> pqi = new MinPQ<SearchNode>(); // init pqi for initial board
+        MinPQ<SearchNode> pqt = new MinPQ<SearchNode>(); // init pqt for twin board
         SearchNode snode = new SearchNode(initial);
+        SearchNode tnode = new SearchNode(initial.twin());
+        pqi.insert(snode);
+        pqt.insert(tnode);
 
-        if (!isSolvable()) { // check initial board is solvable
-            this.totMoves = 0;
-            this.lastSeartchNode = snode;
-            return;
-        }
-
-        pq.insert(snode);
-
-        // then process node in order until goal reached, unless unsolvable...
+        // then process node (alternating between initial and twin) in order until goal reached
         SearchNode cnode;
+        char ind = '0';
+        MinPQ<SearchNode> pq = pqi;
+
         while (true) {
             cnode = pq.delMin();
             Board b = cnode.board;
@@ -59,19 +59,30 @@ public class Solver {
 
             // otherwise add each neighbors (if not already added)
             for (Board nb : b.neighbors()) {
-                if (nb.equals(b)) continue; // avoid re-adding (already processed) board
+                if (cnode.prev != null && nb.equals(cnode.prev.board))
+                    continue; // avoid re-adding (already processed) board
                 pq.insert(new SearchNode(nb, cnode.numMoves + 1, cnode));
             }
+
+            // now switch
+            pq = (pq == pqi) ? pqt : pqi;
+            ind = (ind == '0') ? '1' : '0';
         }
-        // produce solution
-        this.totMoves = cnode.numMoves;
-        this.lastSeartchNode = cnode;
+        if (ind == '0') { // we have a solution
+            this.totMoves = cnode.numMoves;
+            this.lastSeartchNode = cnode;
+            this.solvable = 1;
+        }
+        else { // unsolvable
+            this.totMoves = -1;
+            this.lastSeartchNode = null; // snode;
+            this.solvable = 2;
+        }
     }
 
     // is the initial board solvable? (see below)
     public boolean isSolvable() {
-        // TODO
-        return true;
+        return (this.solvable == 1);
     }
 
     // min number of moves to solve initial board
