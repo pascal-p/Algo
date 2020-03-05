@@ -1,7 +1,7 @@
 import edu.princeton.cs.algs4.Queue;
 
 public class Board {
-    private final int[][] tiles;
+    private final char[][] tiles;
     private final int n;
     private final int hdist;
     private final int mdist;
@@ -9,7 +9,16 @@ public class Board {
 
     // create a board from an n-by-n array of tiles,
     // where tiles[row][col] = tile at (row, col)
+
     public Board(int[][] tiles) {
+        this.n = tiles.length;
+        this.tiles = convBoard(tiles);
+        this.hdist = hammingDist();
+        this.mdist = manhattanDist();
+        this.goal = this.goal();
+    }
+
+    private Board(char[][] tiles) {
         this.n = tiles.length;
         this.tiles = cpyBoard(tiles);
         this.hdist = hammingDist();
@@ -17,13 +26,14 @@ public class Board {
         this.goal = this.goal();
     }
 
+
     // string representation of this board
     public String toString() {
         StringBuilder s = new StringBuilder();
         s.append(n + "\n");
         for (int ix = 0; ix < n; ix++) {
             for (int jx = 0; jx < n; jx++) {
-                s.append(String.format("%2d ", tiles[ix][jx]));
+                s.append(String.format("%2d ", (int) tiles[ix][jx]));
             }
             s.append("\n");
         }
@@ -52,7 +62,7 @@ public class Board {
 
     // does this board equal y?
     public boolean equals(Object y) {
-        // cf. FAQ => If a and b are of type int[][], then use Arrays.deepEquals(Object[] a1, Object[] a2)
+        // cf. FAQ => If a and b are of type char[][], then use Arrays.deepEquals(Object[] a1, Object[] a2)
         if (y == null) return false;
         if (y == this) return true;
         if (y.getClass() != this.getClass()) return false;
@@ -61,7 +71,7 @@ public class Board {
         if (this.n != that.n) return false;
         for (int ix = 0; ix < n; ix++) {
             for (int jx = 0; jx < n; jx++) {
-                if (this.tiles[ix][jx] != that.tiles[ix][jx])
+                if (this.tiles[ix][jx] != that.tiles[ix][jx]) // char cmp
                     return false;
             }
         }
@@ -78,59 +88,65 @@ public class Board {
         int x = coord[0], y = coord[1];
 
         if (x - 1 >= 0) {
-            int[][] ntiles = cpyBoard(this.tiles);
-            swapTile(ntiles, x, y, x - 1, y);
-            qb.enqueue(new Board(ntiles));
+            char[][] ntiles = cpyBoard(this.tiles);
+            qb.enqueue(new Board(swapTile(ntiles, x, y, x - 1, y)));
         }
 
         if (x + 1 < n) {
-            int[][] ntiles = cpyBoard(this.tiles);
-            swapTile(ntiles, x, y, x + 1, y);
-            qb.enqueue(new Board(ntiles));
+            char[][] ntiles = cpyBoard(this.tiles);
+            qb.enqueue(new Board(swapTile(ntiles, x, y, x + 1, y)));
         }
 
         if (y - 1 >= 0) {
-            int[][] ntiles = cpyBoard(this.tiles);
-            swapTile(ntiles, x, y, x, y - 1);
-            qb.enqueue(new Board(ntiles));
+            char[][] ntiles = cpyBoard(this.tiles);
+            qb.enqueue(new Board(swapTile(ntiles, x, y, x, y - 1)));
         }
 
         if (y + 1 < n) {
-            int[][] ntiles = cpyBoard(this.tiles);
-            swapTile(ntiles, x, y, x, y + 1);
-            qb.enqueue(new Board(ntiles));
+            char[][] ntiles = cpyBoard(this.tiles);
+            qb.enqueue(new Board(swapTile(ntiles, x, y, x, y + 1)));
         }
         return qb;
     }
 
     // a board that is obtained by exchanging any pair of tiles
     public Board twin() {
-        int[][] ntiles = cpyBoard(this.tiles);
+        char[][] ntiles = cpyBoard(this.tiles);
 
         // exchange first and last (but avoid blank tile)
         int px1 = 1, px2 = n * n;
         int[] coordO = pos2Coord(px1);
         int[] coordD = pos2Coord(px2);
 
-        if (this.tiles[coordO[0]][coordO[1]] == 0) {
+        if ((int) this.tiles[coordO[0]][coordO[1]] == 0) {
             px1++;
             coordO = pos2Coord(px1);
         }
-        else if (this.tiles[coordD[0]][coordD[1]] == 0) {
+        else if ((int) this.tiles[coordD[0]][coordD[1]] == 0) {
             px2--;
             coordD = pos2Coord(px2);
         }
         assert px1 != px2 : "px1 must be different from px2, but got equality px1: " + px1;
-        swapTile(ntiles, coordO[0], coordO[1], coordD[0], coordD[1]);
-        return new Board(ntiles); // board should be immutable
+        return new Board(swapTile(ntiles, coordO[0], coordO[1], coordD[0],
+                                  coordD[1])); // board should be immutable
     }
 
     /*
      * Private Implementation
      */
 
-    private int[][] cpyBoard(int[][] itiles) {
-        int[][] ctiles = new int[this.n][this.n];
+    private char[][] convBoard(int[][] itiles) {
+        char[][] ctiles = new char[this.n][this.n];
+        for (int ix = 0; ix < n; ix++) {
+            for (int jx = 0; jx < n; jx++) {
+                ctiles[ix][jx] = (char) itiles[ix][jx];
+            }
+        }
+        return ctiles;
+    }
+
+    private char[][] cpyBoard(char[][] itiles) {
+        char[][] ctiles = new char[this.n][this.n];
         for (int ix = 0; ix < n; ix++) {
             for (int jx = 0; jx < n; jx++) {
                 ctiles[ix][jx] = itiles[ix][jx];
@@ -143,7 +159,7 @@ public class Board {
         int d = 0;
         for (int ix = 0; ix < n; ix++) {
             for (int jx = 0; jx < n; jx++) {
-                int k = this.tiles[ix][jx];
+                int k = (int) this.tiles[ix][jx];
                 if (k == 0) continue;          // ignore blank tile
                 d += (k == coord2Pos(ix, jx)) ? 0 : 1;
             }
@@ -152,28 +168,28 @@ public class Board {
     }
 
     private int manhattanDist() {
-        int s = 0;
+        int d = 0;
         for (int ix = 0; ix < n; ix++) {
             for (int jx = 0; jx < n; jx++) {
-                int k = this.tiles[ix][jx];
+                int k = (int) tiles[ix][jx];
                 if (k == 0) continue;          // ignore blank tile
                 int[] coord = pos2Coord(k);
-                s += Math.abs(coord[0] - ix) + Math.abs(coord[1] - jx);
+                d += Math.abs(coord[0] - ix) + Math.abs(coord[1] - jx);
             }
         }
-        return s;
+        return d;
     }
 
     private boolean goal() {
         for (int ix = 0; ix < n - 1; ix++) {
             for (int jx = 0; jx < n; jx++) {
-                if (this.tiles[ix][jx] != coord2Pos(ix, jx))
+                if ((int) this.tiles[ix][jx] != coord2Pos(ix, jx))
                     return false;
             }
         }
         // last row
         for (int jx = 0; jx < n - 1; jx++) {
-            if (this.tiles[n - 1][jx] != coord2Pos(n - 1, jx))
+            if ((int) this.tiles[n - 1][jx] != coord2Pos(n - 1, jx))
                 return false;
         }
         return true;
@@ -204,16 +220,17 @@ public class Board {
     private int[] locateBlank() {
         for (int ix = 0; ix < n; ix++) {
             for (int jx = 0; jx < n; jx++) {
-                if (this.tiles[ix][jx] == 0) return new int[] { ix, jx };
+                if ((int) this.tiles[ix][jx] == 0) return new int[] { ix, jx };
             }
         }
         return new int[] { -1, -1 };
     }
 
-    private void swapTile(int[][] ctiles, int x1, int y1, int x2, int y2) {
-        int t = ctiles[x1][y1];
+    private char[][] swapTile(char[][] ctiles, int x1, int y1, int x2, int y2) {
+        char t = ctiles[x1][y1];
         ctiles[x1][y1] = ctiles[x2][y2];
         ctiles[x2][y2] = t;
+        return ctiles;
     }
 
     // unit testing (not graded)
@@ -228,10 +245,10 @@ public class Board {
 
     private static void testEquals() {
         System.out.print("testEquals: ");
-        int[][] tiles1 = { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 0 } };
-        int[][] tiles2 = { { 1, 2 }, { 4, 0 } };
-        int[][] tiles3 = { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 0 } };
-        int[][] tiles4 = { { 1, 2, 3 }, { 4, 5, 0 }, { 6, 7, 8 } };
+        char[][] tiles1 = { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 0 } };
+        char[][] tiles2 = { { 1, 2 }, { 4, 0 } };
+        char[][] tiles3 = { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 0 } };
+        char[][] tiles4 = { { 1, 2, 3 }, { 4, 5, 0 }, { 6, 7, 8 } };
 
         Board b1 = new Board(tiles1);
         Board b2 = new Board(tiles2);
@@ -250,20 +267,20 @@ public class Board {
 
     private static void testHamming() {
         System.out.print("testHamming: ");
-        int[][] gtiles = { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 0 } };
+        char[][] gtiles = { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 0 } };
         Board gboard = new Board(gtiles);
         assert gboard.dimension() == 3 : "goal board has dimension 3x3";
         int hdG = gboard.hamming();
         assert gboard.hamming() == 0 : "goal board should have hamming dist of 0, got: " + hdG;
 
-        int[][] ctiles1 = { { 8, 1, 3 }, { 4, 0, 2 }, { 7, 6, 5 } };
+        char[][] ctiles1 = { { 8, 1, 3 }, { 4, 0, 2 }, { 7, 6, 5 } };
         Board cboard = new Board(ctiles1);
         assert cboard.dimension() == 3 : "cand board has dimention 3x3";
         int hdExp = 5, hdAct = cboard.hamming();
         assert hdAct == hdExp :
                 "cand board should have hamming dist of " + hdExp + ", got: " + hdAct;
 
-        int[][] ctiles2 = { { 1, 8, 3 }, { 2, 5, 0 }, { 7, 4, 6 } };
+        char[][] ctiles2 = { { 1, 8, 3 }, { 2, 5, 0 }, { 7, 4, 6 } };
         cboard = new Board(ctiles2);
         assert cboard.dimension() == 3 : "cand board has dimention 3x3";
         hdExp = 4;
@@ -271,7 +288,7 @@ public class Board {
         assert hdAct == hdExp :
                 "cand board should have hamming dist of " + hdExp + ", got: " + hdAct;
 
-        int[][] ctiles3 = {
+        char[][] ctiles3 = {
                 { 1, 2, 8, 4, 5 }, { 6, 7, 9, 3, 10 }, { 11, 16, 13, 14, 15 },
                 { 12, 17, 19, 18, 20 }, { 21, 23, 22, 0, 24 }
         };
@@ -286,20 +303,20 @@ public class Board {
 
     private static void testManhattan() {
         System.out.print("testManhattan: ");
-        int[][] gtiles = { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 0 } };
+        char[][] gtiles = { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 0 } };
         Board gboard = new Board(gtiles);
         assert gboard.dimension() == 3 : "goal board has dimension 3x3";
         int hmG = gboard.manhattan();
         assert hmG == 0 : "goal board should have manhattan dist of 0, got: " + hmG;
 
-        int[][] ctiles1 = { { 8, 1, 3 }, { 4, 0, 2 }, { 7, 6, 5 } };
+        char[][] ctiles1 = { { 8, 1, 3 }, { 4, 0, 2 }, { 7, 6, 5 } };
         Board cboard = new Board(ctiles1);
         assert cboard.dimension() == 3 : "cand board has dimention 3x3";
         int hmExp = 10, hmAct = cboard.manhattan();
         assert hmAct == hmExp :
                 "cand board should have manhattan dist of " + hmExp + ", got: " + hmAct;
 
-        int[][] ctiles2 = { { 1, 8, 3 }, { 2, 5, 0 }, { 7, 4, 6 } };
+        char[][] ctiles2 = { { 1, 8, 3 }, { 2, 5, 0 }, { 7, 4, 6 } };
         cboard = new Board(ctiles2);
         assert cboard.dimension() == 3 : "cand board has dimention 3x3";
         hmExp = 7;
@@ -307,7 +324,7 @@ public class Board {
         assert hmAct == hmExp :
                 "cand board should have manhattan dist of " + hmExp + ", got: " + hmAct;
         //
-        int[][] ctiles3 = {
+        char[][] ctiles3 = {
                 { 1, 2, 8, 4, 5 }, { 6, 7, 9, 3, 10 }, { 11, 16, 13, 14, 15 },
                 { 12, 17, 19, 18, 20 }, { 21, 23, 22, 0, 24 }
         };
@@ -322,9 +339,9 @@ public class Board {
 
     private static void testGoal() {
         System.out.print("testGoal: ");
-        int[][] tiles1 = { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 0 } };
-        int[][] tiles2 = { { 1, 2 }, { 4, 0 } };
-        int[][] tiles3 = { { 1, 2, 3 }, { 4, 5, 0 }, { 6, 7, 8 } };
+        char[][] tiles1 = { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 0 } };
+        char[][] tiles2 = { { 1, 2 }, { 4, 0 } };
+        char[][] tiles3 = { { 1, 2, 3 }, { 4, 5, 0 }, { 6, 7, 8 } };
 
         Board b1 = new Board(tiles1);
         assert b1.isGoal() : "board b1 should be the goal!";
@@ -339,7 +356,7 @@ public class Board {
 
     private static void testNeighbors() {
         System.out.print("testNeighbors: ");
-        int[][] tiles1 = { { 1, 0, 3 }, { 4, 2, 5 }, { 7, 8, 6 } };
+        char[][] tiles1 = { { 1, 0, 3 }, { 4, 2, 5 }, { 7, 8, 6 } };
         Board b1 = new Board(tiles1);
 
         System.out.println("\ninitial board: ");
@@ -353,7 +370,7 @@ public class Board {
         }
         assert n == 3 : "This board should have " + n + "neighbors. Got: " + n;
         //
-        int[][] tiles2 = { { 0, 1, 3 }, { 4, 2, 5 }, { 7, 8, 6 } };
+        char[][] tiles2 = { { 0, 1, 3 }, { 4, 2, 5 }, { 7, 8, 6 } };
         b1 = new Board(tiles2);
         System.out.println("\ninitial board: ");
         System.out.println(b1);
@@ -371,7 +388,7 @@ public class Board {
 
     private static void testMyTwin() {
         System.out.println("testTwin: original");
-        int[][] tiles1 = {
+        char[][] tiles1 = {
                 { 1, 2, 3, 4 }, { 5, 6, 7, 8 }, { 9, 10, 11, 12 }, { 13, 14, 15, 0 }
         };
         Board b11 = new Board(tiles1);

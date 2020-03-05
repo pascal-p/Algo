@@ -94,7 +94,7 @@ public class Solver {
     public Iterable<Board> solution() {
         SearchNode cnode = this.lastSeartchNode;
         if (cnode == null) return null;
-        
+
         Stack<Board> sb = new Stack<>();
         while (cnode != null) {
             sb.push(cnode.board);
