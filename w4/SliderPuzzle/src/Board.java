@@ -62,7 +62,6 @@ public class Board {
 
     // does this board equal y?
     public boolean equals(Object y) {
-        // cf. FAQ => If a and b are of type char[][], then use Arrays.deepEquals(Object[] a1, Object[] a2)
         if (y == null) return false;
         if (y == this) return true;
         if (y.getClass() != this.getClass()) return false;
@@ -129,6 +128,28 @@ public class Board {
         assert px1 != px2 : "px1 must be different from px2, but got equality px1: " + px1;
         return new Board(swapTile(ntiles, coordO[0], coordO[1], coordD[0],
                                   coordD[1])); // board should be immutable
+    }
+
+    public int[] locateBlankTile() {
+        return this.locateBlank();
+    }
+
+    public int numInversions() {
+        // A pair of tiles form an inversion if the values on the tiles are in reverse order of their appearance in goal state.
+        int ni = 0;
+
+        for (int px = 1; px <= this.n * this.n; px++) {
+            int[] c1 = pos2Coord(px);
+            if ((int) this.tiles[c1[0]][c1[1]] == 0) continue;
+
+            for (int qx = px + 1; qx <= this.n * this.n; qx++) {
+                int[] c2 = pos2Coord(qx);
+                if ((int) this.tiles[c2[0]][c2[1]] == 0) continue;
+                if ((int) this.tiles[c1[0]][c1[1]] > (int) this.tiles[c2[0]][c2[1]])
+                    ni++;
+            }
+        }
+        return ni;
     }
 
     /*
@@ -219,9 +240,8 @@ public class Board {
 
     private int[] locateBlank() {
         for (int ix = 0; ix < n; ix++) {
-            for (int jx = 0; jx < n; jx++) {
+            for (int jx = 0; jx < n; jx++)
                 if ((int) this.tiles[ix][jx] == 0) return new int[] { ix, jx };
-            }
         }
         return new int[] { -1, -1 };
     }
@@ -241,6 +261,7 @@ public class Board {
         testGoal();
         testNeighbors();
         testMyTwin();
+        testNumInv();
     }
 
     private static void testEquals() {
@@ -407,6 +428,24 @@ public class Board {
         assert hdAct == hdExp :
                 "cand board should have hamming dist of " + hdExp + ", got: " + hdAct;
         System.out.println("testTwin: ok");
+    }
+
+    private static void testNumInv() {
+        System.out.println("testNumInv: start");
+        char[][] tiles1 = { { 1, 2, 3 }, { 4, 0, 5 }, { 8, 6, 7 } };
+        Board b1 = new Board(tiles1);
+        System.out.println(b1);
+
+        int exp = 2, act = b1.numInversions();
+        assert act == exp : "(1) Num. inversion should be " + exp + " / got: " + act;
+
+        char[][] tiles2 = { { 5, 2, 8 }, { 4, 1, 7 }, { 0, 3, 6 } };
+        Board b2 = new Board(tiles2);
+        System.out.println(b2);
+
+        exp = 14;
+        act = b2.numInversions();
+        assert act == exp : "(1) Num. inversion should be " + exp + " / got: " + act;
     }
 }
 
