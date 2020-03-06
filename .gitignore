@@ -1,11 +1,10 @@
-
 .idea/
 .lift/
 
 *.BAK
 *.class
 *.iml
-*.org 
+*.org
 *.zip
 *.png
 *.jpg
@@ -22,3 +21,6 @@ w1/percolation/InteractivePercolationVisualizer.java
 w1/percolation/PercolationVisualizer.java
 
 w2/Queues/src/YaQueue.java
+
+w5/KDTree/src/*Generator.java
+w5/KDTree/src/*Visualizer.java
