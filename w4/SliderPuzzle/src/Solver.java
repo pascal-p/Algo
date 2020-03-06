@@ -5,7 +5,7 @@ import edu.princeton.cs.algs4.StdOut;
 
 public class Solver {
     private final int totMoves;
-    private final SearchNode lastSeartchNode;
+    private final SearchNode lastSearchNode;
     private char solvable = 0;
 
     private class SearchNode implements Comparable<SearchNode> {
@@ -70,12 +70,12 @@ public class Solver {
         }
         if (ind == '0') { // we have a solution
             this.totMoves = cnode.numMoves;
-            this.lastSeartchNode = cnode;
+            this.lastSearchNode = cnode;
             this.solvable = 1;
         }
         else { // unsolvable
             this.totMoves = -1;
-            this.lastSeartchNode = null;
+            this.lastSearchNode = null;
             this.solvable = 2;
         }
     }
@@ -92,7 +92,7 @@ public class Solver {
 
     // sequence of boards in a shortest solution
     public Iterable<Board> solution() {
-        SearchNode cnode = this.lastSeartchNode;
+        SearchNode cnode = this.lastSearchNode;
         if (cnode == null) return null;
 
         Stack<Board> sb = new Stack<>();
