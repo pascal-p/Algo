@@ -5,7 +5,7 @@ import edu.princeton.cs.algs4.SET;
 import edu.princeton.cs.algs4.StdDraw;
 
 public class PointSET {
-    private SET<Point2D> set;
+    private final SET<Point2D> set;
     private int sz;
 
     public PointSET() {  // construct an empty set of points
@@ -74,7 +74,7 @@ public class PointSET {
         Point2D pt = null;
 
         for (Point2D op : this.set) {
-            double dop = p.distanceTo(op);
+            double dop = p.distanceSquaredTo(op);
             int cmp = Double.compare(dop, minDist);
             if (cmp < 0) {
                 pt = op;
@@ -123,12 +123,6 @@ public class PointSET {
             StdDraw.setPenColor(StdDraw.RED);
             brute.nearest(query).draw();
             StdDraw.setPenRadius(0.02);
-
-            // draw in blue the nearest neighbor (using kd-tree algorithm)
-            StdDraw.setPenColor(StdDraw.BLUE);
-            // kdtree.nearest(query).draw();
-            StdDraw.show();
-            StdDraw.pause(40);
         }
     }
 }
