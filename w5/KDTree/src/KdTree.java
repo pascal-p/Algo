@@ -1,7 +1,7 @@
 import edu.princeton.cs.algs4.In;
 import edu.princeton.cs.algs4.Point2D;
+import edu.princeton.cs.algs4.Queue;
 import edu.princeton.cs.algs4.RectHV;
-import edu.princeton.cs.algs4.SET;
 import edu.princeton.cs.algs4.StdDraw;
 
 public class KdTree {
@@ -11,8 +11,8 @@ public class KdTree {
     private Node root;
 
     private static class Node {
-        private Point2D p;      // the point
-        private RectHV rect;    // the axis-aligned rectangle corresponding to this node
+        private final Point2D p;      // the point
+        private final RectHV rect;    // the axis-aligned rectangle corresponding to this node
         private Node lb;        // the left/bottom subtree
         private Node rt;        // the right/top subtree
 
@@ -75,23 +75,22 @@ public class KdTree {
     // all points that are inside the rectangle (or on the boundary)
     public Iterable<Point2D> range(RectHV rect) {
         if (rect == null) throw new IllegalArgumentException("Null RectHV instance given");
-
-        // To find all points contained in a given query rectangle, start at the root and recursively
-        // search for points in both subtrees using the following pruning rule:
-        // - if the query rectangle does not intersect the rectangle corresponding to a node,
-        // there is no need to explore that node (or its subtrees).
-        // A subtree is searched only if it might contain a point contained in the query rectangle.
-
         if (this.isEmpty()) return null;
-        SET<Point2D> iset = new SET<>();
-        return inOrder(iset, this.root, rect);
+
+        Queue<Point2D> q = new Queue<>();
+        // cf. inOrder for details on the impl.
+        return inOrder(q, this.root, rect);
     }
 
     // a nearest neighbor in the set to point p; null if the set is empty
     public Point2D nearest(Point2D p) {
         if (p == null) throw new IllegalArgumentException("Null Point2D instance given");
-        // TODO
-        return null;
+        if (this.isEmpty()) return null;
+
+        // System.out.println("Let's get started...");
+        Point2D closest = nearest(this.root, p, this.root.p, VERT);
+        // System.out.println("\nFinally closest is: " + closest);
+        return closest;
     }
 
     /*
@@ -109,7 +108,7 @@ public class KdTree {
         if (x == null) {
             this.sz++;
             return new Node(p,
-                            setRectHV(px, p, orient == HOR ? VERT : HOR, pcmp));
+                            getRectHV(px, orient == HOR ? VERT : HOR, pcmp));
         }
         int cmp = (orient == VERT) ?
                   Double.compare(p.x(), x.p.x()) : Double.compare(p.y(), x.p.y());
@@ -124,7 +123,7 @@ public class KdTree {
         return x;
     }
 
-    private RectHV setRectHV(Node px, Point2D p, char porient, int pcmp) {
+    private RectHV getRectHV(Node px, char porient, int pcmp) {
         //
         // As nodes are added to the tree, each node's rectangle is either:
         // - The left portion of its parent's rectangle, if going to left subtree   (orient: HOR)
@@ -173,23 +172,147 @@ public class KdTree {
             return contains(x.rt, p, nextOrient);
     }
 
-    private SET<Point2D> inOrder(SET<Point2D> s, Node x, RectHV rect) {
+    private Queue<Point2D> inOrder(Queue<Point2D> q, Node x, RectHV rect) {
+        //
         // To find all points contained in a given query rectangle, start at the root and recursively
         // search for points in both subtrees using the following pruning rule:
         // - if the query rectangle does not intersect the rectangle corresponding to a node,
         // there is no need to explore that node (or its subtrees).
         // A subtree is searched only if it might contain a point contained in the query rectangle.
-
-        if (x == null) return s;
+        //
+        if (x == null) return q;
         else if (x.rect.intersects(rect)) {
-            if (rect.contains(x.p)) s.add(x.p);
-            SET<Point2D> ls = inOrder(s, x.lb, rect);
-            SET<Point2D> rs = inOrder(s, x.rt, rect);
-            return ls.union(rs);
+            if (rect.contains(x.p)) q.enqueue(x.p);
+            q = inOrder(q, x.lb, rect);
+            return inOrder(q, x.rt, rect);
         }
         else // nothing to do
             assert true;
-        return s;
+        return q;
+    }
+
+    private Point2D nearest(Node x, Point2D qp, Point2D ccand, char orient) {
+        // To find a closest point to a given query point, start at the root and recursively search
+        // in both subtrees using the following pruning rule:
+        // - if the closest point discovered so far is closer than the distance between the query point
+        // and the rectangle corresponding to a node, there is no need to explore that node (or its
+        // subtrees).
+        // That is, search a node only only if it might contain a point that is closer than the best
+        // one found so far. The effectiveness of the pruning rule depends on quickly finding a
+        // nearby point.
+        // To do this, organize the recursive method so that when there are two possible subtrees to
+        // go down, you always choose the subtree that is on the same side of the splitting line as
+        // the query point as the first subtree to explore — the closest point
+        // found while exploring the first subtree may enable pruning of the second subtree.
+
+        if (x == null) return ccand;
+        // System.out.println("\nCurrent node is " + x.p + " / orient. " + orient + " / Qry pt: " + qp
+        //                            + " / nearest(so far): " + ccand);
+        if (x.lb == null && x.rt == null) {
+            // System.out.print("TERMINAL NODE ");
+            int cmp = compare(x.p, ccand, qp); // x.p -- qp vs ccand -- qp
+            if (cmp < 0) ccand = x.p; // d(x.p, qp) < d(ccand, qp), hence closest/nearest is x.p
+            // System.out.println("FOUND closest: " + ccand);
+            return ccand;
+        }
+
+        // update closest candidate here?
+        int cmp = compare(x.p, ccand, qp);
+        if (cmp < 0) ccand = x.p;
+
+        if (orient == VERT) {
+            Point2D[] seg = vertLineDiv(x);
+            cmp = Double.compare(qp.x(), seg[0].x());
+            if (cmp < 0) { // start with left subtree
+                // System.out.println(" | go to Left subtree... next orient: " + HOR);
+                Point2D lcp = nearest(x.lb, qp, ccand, HOR);
+                // System.out.println(" | BACK FROM Left subtree of " + x.p);
+                cmp = compare(lcp, ccand, qp); // [lcp, qp] vs [ccand, qp] - lcp or ccand?
+
+                if (cmp <= 0) { // new closest point it is lcp => explore right subtree
+                    // System.out.println(" => go to Right subtree... next orient: " + HOR);
+                    Point2D rcp = nearest(x.rt, qp, lcp, HOR);
+                    cmp = compare(rcp, lcp, qp); // [rcp, qp] vs [lcp, qp] - rcp or lcp?
+                    return (cmp < 0) ? rcp : lcp;
+                }
+                else { // ccand was the nearest/closest point return it!
+                    // System.out.println(" =L1> ccand(|) explored only LB: " + ccand
+                    //                            + " was closest point - return it");
+                    return ccand;
+                }
+            }
+            else { // start with rigth subtree
+                // System.out.println(" | go to Right subtree... next orient: " + HOR);
+                Point2D rcp = nearest(x.rt, qp, ccand, HOR);
+                cmp = compare(rcp, ccand, qp); // [rcp, qp] vs [ccand, qp] - rcp or ccand?
+
+                if (cmp <= 0) { // found new closest point it is rcp => explore left subtree
+                    // System.out.println(" => go to Left subtree... next orient: " + HOR);
+                    Point2D lcp = nearest(x.lb, qp, rcp, HOR);
+                    // System.out.println(" | BACK FROM Right subtree of " + x.p);
+                    cmp = compare(lcp, rcp, qp); // [lcp, qp] vs [rcp, qp] - lcp or rcp?
+                    return (cmp < 0) ? lcp : rcp;
+                }
+                else { // ccand was the nearest/closest point return it!
+                    // System.out.println(" =R1> ccand(|) explored only RT: " + ccand
+                    //                            + " was closest point - return it");
+                    return ccand;
+                }
+            }
+        }
+        else { // orient == HOR
+            Point2D[] seg = horLineDiv(x);
+            cmp = Double.compare(qp.y(), seg[0].y());
+            if (cmp < 0) { // start with left subtree
+                // System.out.println(" -- go to Left subtree... next orient: " + VERT);
+                Point2D lcp = nearest(x.lb, qp, ccand, VERT);
+                // System.out.println(" -- BACK FROM Left subtree of " + x.p);
+                cmp = compare(lcp, ccand, qp); // [lcp, qp] vs [ccand, qp] - lcp or ccand?
+
+                if (cmp <= 0) { // new closest point it is lcp => explore right subtree
+                    // System.out.println(" => go to Right subtree... next orient: " + VERT);
+                    Point2D rcp = nearest(x.rt, qp, lcp, VERT);
+                    cmp = compare(rcp, lcp, qp); // [rcp, qp] vs [lcp, qp] - rcp or lcp?
+
+                    return (cmp < 0) ? rcp : lcp;
+                }
+                else { // ccand was the nearest/closest point return it!
+                    // System.out.println(" =L2> ccand(--) explored only LB: " + ccand
+                    //                            + " was closest point - return it");
+                    return ccand;
+                }
+            }
+            else { // start with rigth subtree
+                // System.out.println(" -- go to Right subtree... next orient: " + VERT);
+                Point2D rcp = nearest(x.rt, qp, ccand, VERT);
+                // System.out.println(" -- BACK FROM Right subtree of " + x.p);
+                cmp = compare(rcp, ccand, qp); // [rcp, qp] vs [ccand, qp] - rcp or ccand?
+
+                if (cmp <= 0) { // found new closest point it is rcp => explore left subtree
+                    // System.out.println(" => go to Left subtree... next orient: " + VERT);
+                    Point2D lcp = nearest(x.lb, qp, rcp, VERT);
+                    cmp = compare(lcp, rcp, qp); // [lcp, qp] vs [rcp, qp] - lcp or rcp?
+
+                    return (cmp < 0) ? lcp : rcp;
+                }
+                else { // ccand was the nearest/closest point return it!
+                    // System.out.println(" =R2> ccand(--) explored only RT: " + ccand
+                    //                            + " was closest point - return it");
+                    return ccand;
+                }
+            }
+        }
+    }
+
+    private int compare(Point2D p1, Point2D p2, Point2D rp) {
+        // cmp d(p1, rp) vs d(p2, rp), rp == reference point
+        double d1 = p1.distanceSquaredTo(rp);
+        double d2 = p2.distanceSquaredTo(rp);
+        int cmp = Double.compare(d1, d2);
+        // System.out.println(
+        //         "\tcmp d1(" + p1 + ", " + rp + ")= " + d1 + " to d2(" + p2 + ", " + rp + ")= "
+        //                 + d2 + " => " + cmp);
+        return cmp;
     }
 
     // private void inOrder(Node x) {
@@ -200,30 +323,23 @@ public class KdTree {
     // }
 
     private void draw(Node n, char orient) { // recursive pre-order Tree Traversal
-        // Traverse the left node
-        // Draw the current node
-        // Draw the current partition line (checking whether it should be vertical or horizontal)
-        // Traverse the right node
-
         // To draw a Node:
         // Draw the vertical line or horizontal line that this Node uses to divide the tree.
         // Draw the point that this node represents.
         // Recursively draw the left child and the right child.
-        Point2D orig, dest;
+        Point2D[] seg; // orig, dest;
         if (orient == VERT) {
             StdDraw.setPenColor(StdDraw.RED);
-            orig = new Point2D(n.p.x(), n.rect.ymin());
-            dest = new Point2D(n.p.x(), n.rect.ymax());
+            seg = vertLineDiv(n); // orig = new Point2D(n.p.x(), n.rect.ymin());
+            // dest = new Point2D(n.p.x(), n.rect.ymax());
         }
-        else {
-            // HORIZ
+        else { // HORIZ
             StdDraw.setPenColor(StdDraw.BLUE);
-
-            orig = new Point2D(n.rect.xmin(), n.p.y());
-            dest = new Point2D(n.rect.xmax(), n.p.y());
+            seg = horLineDiv(n); // orig = new Point2D(n.rect.xmin(), n.p.y());
+            // dest = new Point2D(n.rect.xmax(), n.p.y());
         }
         StdDraw.setPenRadius();
-        orig.drawTo(dest);
+        seg[0].drawTo(seg[1]); // orig.drawTo(dest); // dividing line
         StdDraw.setPenColor(StdDraw.BLACK);
         StdDraw.setPenRadius(0.01);
         n.p.draw(); // draw point
@@ -231,6 +347,20 @@ public class KdTree {
         char newOrient = orient == VERT ? HOR : VERT;
         if (n.lb != null) draw(n.lb, newOrient);
         if (n.rt != null) draw(n.rt, newOrient);
+    }
+
+    private Point2D[] vertLineDiv(Node n) {
+        Point2D orig = new Point2D(n.p.x(), n.rect.ymin()),
+                dest = new Point2D(n.p.x(), n.rect.ymax());
+        Point2D[] seg = { orig, dest };
+        return seg;
+    }
+
+    private Point2D[] horLineDiv(Node n) {
+        Point2D orig = new Point2D(n.rect.xmin(), n.p.y()),
+                dest = new Point2D(n.rect.xmax(), n.p.y());
+        Point2D[] seg = { orig, dest };
+        return seg;
     }
 
     // unit testing of the methods (optional)
@@ -265,10 +395,11 @@ public class KdTree {
         // process nearest neighbor queries
         StdDraw.enableDoubleBuffering();
 
+        int ix = 0;
         while (true) {
             // the location (x, y) of the mouse
-            double x = StdDraw.mouseX();
-            double y = StdDraw.mouseY();
+            double x = 0.25; // 0.5 // StdDraw.mouseX();
+            double y = 0.0; // 0.5 // StdDraw.mouseY();
             Point2D query = new Point2D(x, y);
 
             // draw all of the points
@@ -277,11 +408,21 @@ public class KdTree {
             StdDraw.setPenRadius(0.01);
             kdtree.draw();
 
+            StdDraw.setPenColor(StdDraw.GREEN);
+            StdDraw.setPenRadius(0.02);
+            query.draw();
+
             // draw in blue the nearest neighbor (using kd-tree algorithm)
-            // StdDraw.setPenColor(StdDraw.BLUE);
-            // kdtree.nearest(query).draw();
+            //
+            System.out.println("Which point is closest to " + query + "?");
+            StdDraw.setPenRadius(0.03);
+            StdDraw.setPenColor(StdDraw.BLUE);
+            kdtree.nearest(query).draw();
             StdDraw.show();
-            StdDraw.pause(40);
+            StdDraw.pause(100);
+
+            if (ix == 0) break;
+            ix--;
         }
     }
 }
