@@ -9,7 +9,6 @@ public class KdTree {
     private static final char HOR = 'H';
     private int sz;
     private Node root;
-    private final boolean DEBUG = false;
 
     private static class Node {
         private final Point2D p;   // the point
@@ -89,7 +88,6 @@ public class KdTree {
         if (this.isEmpty()) return null;
 
         Point2D closest = nearest(this.root, p, this.root.p, VERT);
-        if (DEBUG) System.out.println("\nFinally closest is: " + closest);
         return closest;
     }
 
@@ -184,7 +182,7 @@ public class KdTree {
         return q;
     }
 
-    private Point2D nearest(Node x, Point2D qp, Point2D ccand, char orient) {
+    private Point2D nearest(Node x, Point2D qp, Point2D ncand, char orient) {
         //
         // To find a closest point to a given query point, start at the root and recursively search
         // in both subtrees using the following pruning rule:
@@ -199,93 +197,78 @@ public class KdTree {
         // the query point as the first subtree to explore — the closest point
         // found while exploring the first subtree may enable pruning of the second subtree.
         //
-        if (x == null) return ccand;
+        if (x == null) return ncand;
 
-        // update closest candidate here?
-        ccand = (compare(x.p, ccand, qp) < 0) ? x.p : ccand;
-        if (DEBUG) System.out.println("\nCurr is    " + x.p + " / qp: " + qp + " / closest: "
-                                              + ccand + " / " + x.rect);
+        // update closest candidate (so far)
+        ncand = (cmpWithQP(x.p, ncand, qp) < 0) ? x.p : ncand;
+        if (x.lb == null && x.rt == null) return ncand;
 
-        if (x.lb == null && x.rt == null) {
-            if (DEBUG) System.out.println("TERMINAL NODE FOUND closest: " + ccand);
-            return ccand;
-        }
-
+        // at least one child
         if (orient == VERT) { // determine which subtree to go first...
-            Point2D[] seg = vertLineDiv(x);
-            int cmp = Double.compare(qp.x(), seg[0].x());
-            return nearest(x, qp, ccand, HOR, cmp);
+            return nearest(x, qp, ncand, HOR, Double.compare(qp.x(), x.p.x()));
         }
         // curr. orient == HOR, detetermine which subtree to go first...
-        Point2D[] seg = horLineDiv(x);
-        int cmp = Double.compare(qp.y(), seg[0].y());
-        return nearest(x, qp, ccand, VERT, cmp);
+        return nearest(x, qp, ncand, VERT, Double.compare(qp.y(), x.p.y()));
     }
 
-    private Point2D nearest(Node x, Point2D qp, Point2D ccand, char orient, int cmp) {
-        char pOr = (orient == HOR) ? '|' : '-';
-
-        if (cmp < 0) { // start with left subtree
-            if (DEBUG) System.out.println(pOr + " go to Left  ST1... next orient: " + orient);
-            Point2D lcp = nearest(x.lb, qp, ccand, orient);
-            cmp = compare(lcp, ccand, qp); // [lcp, qp] vs [ccand, qp] - lcp or ccand?
-            if (DEBUG) System.out.println(pOr + " BACK FROM Left  ST1 of " + x.p +
-                                                  " with (upd) cmp: " + cmp);
-            ccand = (cmp < 0) ? lcp : ccand; // update to best ccand
-
-            // check if distance closest point (so far) < d(qp, rect of other child node[x.rt])
-            if (x.rt != null) {
-                cmp = compareWithRect(x.rt, ccand, qp);
-                if (cmp <= 0) return ccand;
-                if (DEBUG) System.out.println(" => go to Right ST1... next orient: " + orient);
-                Point2D rcp = nearest(x.rt, qp, ccand, orient);
-                cmp = compare(rcp, ccand, qp); // [rcp, qp] vs [lcp, qp] - rcp or lcp?
-                if (DEBUG) System.out.println(pOr + " BACK FROM Right ST1 " + x.p +
-                                                      " with (upd) cmp: " + cmp);
-                return (cmp < 0) ? rcp : ccand;
+    private Point2D nearest(Node x, Point2D qp, Point2D ncand, char orient, int cmp) {
+        if (cmp <= 0) { // start with left subtree (unless empty) - INSTEAD OF cmp < 0
+            if (x.lb != null) {
+                Point2D lnp = nearest(x.lb, qp, ncand, orient);
+                cmp = cmpWithQP(lnp, ncand, qp);  // [lnp, qp] vs [ncand, qp] - lnp or ncand?
+                ncand = (cmp < 0) ? lnp : ncand;
             }
 
-            return ccand;
+            if (x.rt != null) {
+                // check if distance closest point (so far) < d(qp, rect of other child node[x.rt])
+                cmp = cmpWithRect(x.rt, ncand, qp);
+                if (cmp <= 0) return ncand;
+                Point2D rnp = nearest(x.rt, qp, ncand, orient);
+                cmp = cmpWithQP(rnp, ncand, qp); // [rnp, qp] vs [ncand, qp] - rnp or ncand?
+                ncand = (cmp < 0) ? rnp : ncand;
+            }
+
+            return ncand;
         }
 
-        // otherwise, start with rigth subtree
-        if (DEBUG) System.out.println(pOr + " go to Right ST2... next orient: " + orient);
-        Point2D rcp = nearest(x.rt, qp, ccand, orient);
-        cmp = compare(rcp, ccand, qp); // [rcp, qp] vs [ccand, qp] - rcp or ccand?
-        if (DEBUG)
-            System.out.println(pOr + " BACK FROM Right ST2 of " + x.p + " with (upd) cmp: " + cmp);
-        ccand = (cmp < 0) ? rcp : ccand; // update to best ccand
+        // otherwise, start with right subtree, unless empty
+        if (x.rt != null) {
+            Point2D rnp = nearest(x.rt, qp, ncand, orient);
+            cmp = cmpWithQP(rnp, ncand, qp); // [rnp, qp] vs [ncand, qp] - rnp or ncand?
+            ncand = (cmp < 0) ? rnp : ncand;
+        }
 
-        // check if distance closest point (so far) < d(qp, rect of other child node[x.lb])
         if (x.lb != null) {
-            cmp = compareWithRect(x.lb, ccand, qp);
-            if (cmp <= 0) return ccand;
-            if (DEBUG) System.out.println(" => go to Left  ST2... next orient: " + orient);
-            Point2D lcp = nearest(x.lb, qp, ccand, orient);
-            cmp = compare(lcp, ccand, qp);
-            if (DEBUG)
-                System.out.println(pOr + " BACK FROM Left  ST2 " + x.p + " with (upd) cmp: " + cmp);
-            return (cmp < 0) ? lcp : ccand;
+            // check if distance closest point (so far) < d(qp, rect of other child node[x.lb])
+            cmp = cmpWithRect(x.lb, ncand, qp);
+            if (cmp <= 0) return ncand;
+            Point2D lnp = nearest(x.lb, qp, ncand, orient);
+            cmp = cmpWithQP(lnp, ncand, qp); // [lnp, qp] vs [ncand, qp] - lnp or ncand?
+            ncand = (cmp < 0) ? lnp : ncand;
         }
 
-        return ccand;
+        return ncand;
     }
 
-    private int compare(Point2D p1, Point2D p2, Point2D rp) {
-        // cmp d(p1, rp) vs d(p2, rp), rp == reference point
-        double d1 = p1.distanceSquaredTo(rp);
-        double d2 = p2.distanceSquaredTo(rp);
+    private int cmpWithQP(Point2D p1, Point2D p2, Point2D qp) {
+        // cmp d(p1, qp) vs d(p2, qp), qp == query point
+        double d1 = p1.distanceSquaredTo(qp);
+        double d2 = p2.distanceSquaredTo(qp);
         return Double.compare(d1, d2);
     }
 
-    private int compareWithRect(Node x, Point2D ccand, Point2D qp) {
-        double dqpRect = x.rect.distanceSquaredTo(qp);
+    private int cmpWithRect(Node x, Point2D ccand, Point2D qp) {
+        // if the closest point discovered so far (ccand) is closer than the distance between the
+        // query point (qp) and the rectangle corresponding to a node, there is no need to explore
+        // that node (or its subtrees).
         double dcand = ccand.distanceSquaredTo(qp);
+        double dqpRect = x.rect.distanceSquaredTo(qp);
         return Double.compare(dcand, dqpRect);
     }
 
     // private void inOrder(Node x) {
     //     if (x != null) {
+    //         if (DEBUG) System.out.println(x.p);
     //         if (x.lb != null) inOrder(x.lb);
     //         if (x.rt != null) inOrder(x.rt);
     //     }
@@ -341,15 +324,14 @@ public class KdTree {
             Point2D p = new Point2D(x, y);
             kdtree.insert(p);
         }
-        System.out.println("Read " + kdtree.sz + " points.");
         // process nearest neighbor queries
         StdDraw.enableDoubleBuffering();
 
         int ix = 0;
         while (true) {
             // the location (x, y) of the mouse
-            double x = 0.51; // 0.74; // 0.027; // 0.205 // StdDraw.mouseX();
-            double y = 0.94; // 0.91;  // 0.565; // 0.45 // StdDraw.mouseY();
+            double x = 0.51;  // 0.125; // 0.74; // 0.027; // 0.205 // StdDraw.mouseX();
+            double y = 0.94; // 1.; // 0.91;  // 0.565; // 0.45 // StdDraw.mouseY();
             Point2D query = new Point2D(x, y);
 
             // draw all of the points

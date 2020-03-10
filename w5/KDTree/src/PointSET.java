@@ -36,16 +36,14 @@ public class PointSET {
     }
 
     public void draw() { // draw all points to standard draw
+        //
         // NOTE: How should I set the size and color of the points and rectangles when drawing?
         //       Use StdDraw.setPenColor(StdDraw.BLACK) and StdDraw.setPenRadius(0.01) before
         //       drawing the points;
         //       use StdDraw.setPenColor(StdDraw.RED) or StdDraw.setPenColor(StdDraw.BLUE) and
         //       StdDraw.setPenRadius() before drawing the splitting lines.
-
-        for (Point2D p : this.set) {
-            p.draw();
-        }
-        // anything else?
+        //
+        for (Point2D p : this.set) p.draw();
     }
 
     // all points that are inside the rectangle (or on the boundary)
@@ -91,14 +89,12 @@ public class PointSET {
         String filename = args[0];
         In in = new In(filename);
         PointSET brute = new PointSET();
-        // KdTree kdtree = new KdTree();
 
         System.out.println("Reading reading the points ...");
         while (!in.isEmpty()) {
             double x = in.readDouble();
             double y = in.readDouble();
             Point2D p = new Point2D(x, y);
-            // kdtree.insert(p);
             brute.insert(p);
         }
         System.out.println("Read " + brute.sz + " points.");
@@ -112,8 +108,12 @@ public class PointSET {
             double y = StdDraw.mouseY();
             Point2D query = new Point2D(x, y);
 
-            // draw all of the points
             StdDraw.clear();
+            StdDraw.setPenColor(StdDraw.GREEN);
+            StdDraw.setPenRadius(0.02);
+            query.draw();
+
+            // draw all of the points
             StdDraw.setPenColor(StdDraw.BLACK);
             StdDraw.setPenRadius(0.01);
             brute.draw();
@@ -123,6 +123,10 @@ public class PointSET {
             StdDraw.setPenColor(StdDraw.RED);
             brute.nearest(query).draw();
             StdDraw.setPenRadius(0.02);
+
+            StdDraw.show();
+            // break;
         }
+
     }
 }
