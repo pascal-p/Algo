@@ -1,6 +1,6 @@
 ---
 title: "CP"
-date: "Jan-Mar, 2020"
+date: "Jan-Mar 2020, May 2020"
 author: Pascal P
 output:
   html_document:
@@ -11,8 +11,10 @@ output:
     theme: simplex
 ---
 
-# Synopsis
-  This repository contains some assignments from course ["Algorithms, Part I"](https://www.coursera.org/learn/algorithms-part1/home/welcome).  
+## Synopsis
+  This repository contains the assignments from course ["Algorithms, Part I"](https://www.coursera.org/learn/algorithms-part1/home/welcome).  
+  WIP ["Algorithms, Part II"](https://www.coursera.org/learn/algorithms-part2/home/welcome).  
   
-# Reference
-  Coursera Course - *Algorithms Part I, Princeton University* https://www.coursera.org/learn/algorithms-part1/home/info
+## Reference
+  - Coursera - *Algorithms Part I, Princeton University* https://www.coursera.org/learn/algorithms-part1/home/info
+  - Coursera - *Algorithms Part II, Princeton University* https://www.coursera.org/learn/algorithms-part2/home/info
