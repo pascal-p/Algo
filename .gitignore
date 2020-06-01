@@ -24,3 +24,10 @@ w2/Queues/src/YaQueue.java
 
 w5/KDTree/src/*Generator.java
 w5/KDTree/src/*Visualizer.java
+
+w8/SeamCarving/src/PrintEnergy.java
+w8/SeamCarving/src/PrintSeams.java
+w8/SeamCarving/src/ResizeDemo.java
+w8/SeamCarving/src/SCUtility.java
+w8/SeamCarving/src/ShowEnergy.java
+w8/SeamCarving/src/ShowSeams.java
