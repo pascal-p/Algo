@@ -1,7 +1,7 @@
 /* *****************************************************************************
  *  Name: Pascal
  *  Date: May 2020
- *  Description:SeamCarver API
+ *  Description: SeamCarver API
  **************************************************************************** */
 
 import edu.princeton.cs.algs4.Picture;
