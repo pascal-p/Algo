@@ -9,7 +9,6 @@ import edu.princeton.cs.algs4.Queue;
 import edu.princeton.cs.algs4.StdOut;
 
 import java.util.HashSet;
-import java.util.Set;
 
 public class BoggleSolver {
     private static final byte[][] ADJ4X4 = {
@@ -36,7 +35,7 @@ public class BoggleSolver {
             { 0, 2, 3, 4, 5 },          // 1
             { 1, 4, 5 },                // 2
             { 0, 1, 4, 6, 7 },          // 3
-            { 0, 1, 2, 3, 5, 6, 7, 8 }, //4
+            { 0, 1, 2, 3, 5, 6, 7, 8 }, // 4
             { 1, 2, 4, 7, 8 },          // 5
             { 3, 4, 7 },                // 6
             { 3, 4, 5, 6, 8 },          // 7
@@ -75,8 +74,7 @@ public class BoggleSolver {
     // Returns the set of all valid words in the given Boggle board, as an Iterable.
     public Iterable<String> getAllValidWords(BoggleBoard board) {
         initGraph(board);
-        Set<String> wordSet = dfs();
-        return wordSet;
+        return dfs();
     }
 
     // Returns the score of the given word if it is in the dictionary, zero otherwise.
@@ -101,39 +99,22 @@ public class BoggleSolver {
         StdOut.println("Read input dictionary - It contains " + dictionary.length + " entries.");
         BoggleSolver solver = new BoggleSolver(dictionary);
         BoggleBoard board = new BoggleBoard(args[1]);
-
         StdOut.println("BoggleSolver TrieSet has " + solver.trieSet.size() + " elements");
-        /*
-        String w = "ACCURACY";
-        StdOut.println("BoggleSolver contains " + w + "? " + solver.trieSet.contains(w));
-        w = "FLUMMOXED";
-        StdOut.println("BoggleSolver contains word " + w + "? " + solver.trieSet.contains(w));
-
-        Queue<String> q = solver.trieSet.keysWithPrefix("VAL");
-        Iterable<String> it = q;
-        StdOut.println("BoggleSolver num. of word(s) with VAL as prefix? " + q.size());
-
-        StdOut.println("BoggleSolver dictionary word(s) with VAL as prefix?");
-        for (String word : it) StdOut.println("\t" + word);
-        StdOut.println();
-
-        for (byte ix = 0; ix < solver.n; ix++) {
-            StdOut.println(
-                    "The " + solver.graph[ix].numAdj + " Neighbors of node " + ix + ": ");
-            for (byte jx = 0; jx < solver.graph[ix].numAdj; jx++)
-                StdOut.print(solver.graph[ix].adj[jx] + " ");
-            StdOut.println();
-        }
-        */
 
         int score = 0, numWords = 0;
-        for (String word : solver.getAllValidWords(board)) {
+        long startTime = System.currentTimeMillis();
+        Iterable<String> iter = solver.getAllValidWords(board);
+        long timeElapsed = System.currentTimeMillis() - startTime;
+        for (String word : iter) {
             int wordScore = solver.scoreOf(word);
             StdOut.println(word + " / " + wordScore);
             score += wordScore;
             numWords++;
         }
-        StdOut.println("Score = " + score + " / Num. of words: " + numWords);
+        StdOut.println(
+                "Score = " + score + " / Num. of words: " + numWords
+                        + " // timing (solver.getAllWords): " + timeElapsed
+                        + "ms");
     }
 
     private void initGraph(BoggleBoard board) {
@@ -183,9 +164,9 @@ public class BoggleSolver {
     }
 
     // Explore all nodes (dices) using dfs
-    private Set<String> dfs() {
-        Set<String> wordSet = new HashSet<>();
-        // Set<String> prefixExplored = new HashSet<>();
+    private Queue<String> dfs() {
+        Queue<String> wordQ = new Queue<>();
+        HashSet<String> hshSet = new HashSet<>();
         StringBuilder prefix = new StringBuilder();
 
         int expLen = 1;
@@ -198,7 +179,7 @@ public class BoggleSolver {
                 expLen = 2;
             }
 
-            dfs(prefix, ix, wordSet); // dfs(prefix, ix, wordSet, prefixExplored);
+            dfs(prefix, ix, wordQ, hshSet);
 
             assert !this.graph[ix].marked : "Expected this.graph[ix].marked to be false";
             assert prefix.length() == expLen :
@@ -207,27 +188,23 @@ public class BoggleSolver {
             expLen = 1;
         }
 
-        return wordSet;
+        return wordQ;
     }
 
-    private void dfs(StringBuilder prefix, byte pos, Set<String> wordSet) {
-        // Set<String> prefixExplored) {
-
+    private void dfs(StringBuilder prefix, byte pos, Queue<String> wordQ, HashSet<String> hshSet) {
         this.graph[pos].marked = true; // mark this node (die) as explored
-        // if (prefixExplored.contains(prefix.toString())) return;
 
         if (prefix.length() >= 3) { // Only interested in valid prefixes
             String pre = prefix.toString();
 
-            if (trieSet.keysWithPrefix(pre).size() > 0) {
-                // Any matching words given the current prefix?
-                if (trieSet.contains(pre)) wordSet.add(pre); // Yes, if current prefix is a valid
-                //                                          word add it to our set of words (found)
-            }
-            else {
-                // prefixExplored.add(pre);        // Dead end, add prefix to set of explored prefixes
-                // this.graph[pos].marked = false; // Also un-mark it
-                return;
+            if (!hshSet.contains(pre)) {
+                MyTrieSET.Node x = trieSet.get(pre);
+
+                if (x == null) return; // Dead end
+                else if (x.isString) {
+                    wordQ.enqueue(pre); // Yes, if current prefix is a valid
+                    hshSet.add(pre);
+                }
             }
         }
 
@@ -243,8 +220,7 @@ public class BoggleSolver {
                 if (this.graph[npos].ch == 'Q') prefix.append('U');
 
                 // Launch new search from npos
-                dfs(prefix, npos, wordSet); // dfs(prefix, npos, wordSet, prefixExplored);
-
+                dfs(prefix, npos, wordQ, hshSet);
                 prefix.deleteCharAt(prefix.length() - 1);      // Remove last added Char
 
                 if (prefix.charAt(prefix.length() - 1) == 'Q') // is it a Q? we removed U...
@@ -267,6 +243,10 @@ public class BoggleSolver {
         private static class Node {
             private Node[] next = new Node[R];
             private boolean isString;
+
+            public boolean isString() {
+                return this.isString;
+            }
         }
 
         // constructor
@@ -285,6 +265,11 @@ public class BoggleSolver {
             return x.isString;
         }
 
+        public Node get(String key) {
+            if (key == null) throw new IllegalArgumentException("argument to contains() is null");
+            return get(root, key, 0);
+        }
+
         public void add(String key) {
             if (key == null) throw new IllegalArgumentException("argument to add() is null");
             root = add(root, key, 0);
@@ -292,13 +277,6 @@ public class BoggleSolver {
 
         public int size() {
             return n;
-        }
-
-        public Queue<String> keysWithPrefix(String prefix) {
-            Queue<String> results = new Queue<String>();
-            Node x = get(root, prefix, 0);
-            collect(x, new StringBuilder(prefix), results);
-            return results;
         }
 
         //
@@ -332,21 +310,6 @@ public class BoggleSolver {
                 x.next[c] = add(x.next[c], key, d + 1);
             }
             return x;
-        }
-
-        private void collect(Node x, StringBuilder prefix, Queue<String> results) {
-            if (x == null) return;
-            if (x.isString) {
-                // HACK: found 1 prefix this is enough!
-                results.enqueue(prefix.toString());
-                return;
-            }
-
-            for (char c = 0; c < R; c++) {
-                prefix.append(chr(c));
-                collect(x.next[c], prefix, results);
-                prefix.deleteCharAt(prefix.length() - 1);
-            }
         }
     }
 }
