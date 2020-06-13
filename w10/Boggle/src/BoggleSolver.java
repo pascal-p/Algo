@@ -46,12 +46,14 @@ public class BoggleSolver {
     private DNode[] graph;
     private byte n;
 
+    private boolean hasQ;
+    private HashSet<String> hshSet;
+
     private class DNode {
         private final char ch;
         private final byte[] adj;           // at most 8 neighbors
         private final byte numAdj;          // actual number of neighbors
         private boolean marked;
-        // what else?
 
         public DNode(char ch, byte[] adj, byte numAdj) {
             this.ch = ch;
@@ -69,12 +71,15 @@ public class BoggleSolver {
         for (String key : dictionary) {
             this.trieSet.add(key);
         }
+
+        this.hshSet = null;
     }
 
     // Returns the set of all valid words in the given Boggle board, as an Iterable.
     public Iterable<String> getAllValidWords(BoggleBoard board) {
+        this.hshSet = new HashSet<>();
         initGraph(board);
-        return dfs();
+        return (hasQ) ? dfsQ() : dfs();
     }
 
     // Returns the score of the given word if it is in the dictionary, zero otherwise.
@@ -125,12 +130,12 @@ public class BoggleSolver {
         else if (n == 9) speInitAdj(board, ADJ3X3);
         else {
             byte kx = 0;
-
             for (short ix = 0; ix < board.rows(); ix++)
                 for (short jx = 0; jx < board.cols(); jx++) {
                     byte[] adj = new byte[8];
                     byte numOfAdj = findAdj(adj, board, ix, jx);
                     this.graph[kx] = new DNode(board.getLetter(ix, jx), adj, numOfAdj);
+                    if (board.getLetter(ix, jx) == 'Q') hasQ = true;
                     kx++;
                 }
 
@@ -142,9 +147,9 @@ public class BoggleSolver {
 
         for (short ix = 0; ix < board.rows(); ix++)
             for (short jx = 0; jx < board.cols(); jx++) {
-
                 byte numOfAdj = (byte) adj[kx].length;
                 this.graph[kx] = new DNode(board.getLetter(ix, jx), adj[kx], numOfAdj);
+                if (board.getLetter(ix, jx) == 'Q') hasQ = true;
                 kx++;
             }
     }
@@ -166,48 +171,76 @@ public class BoggleSolver {
     // Explore all nodes (dices) using dfs
     private Queue<String> dfs() {
         Queue<String> wordQ = new Queue<>();
-        HashSet<String> hshSet = new HashSet<>();
         StringBuilder prefix = new StringBuilder();
 
-        int expLen = 1;
         for (byte ix = 0; ix < this.n; ix++) {
             char ch = this.graph[ix].ch;
             prefix.append(ch);
-
-            if (ch == 'Q') {
-                prefix.append('U');
-                expLen = 2;
-            }
-
-            dfs(prefix, ix, wordQ, hshSet);
-
-            assert !this.graph[ix].marked : "Expected this.graph[ix].marked to be false";
-            assert prefix.length() == expLen :
-                    "Expected prefix length to be 1, got: " + prefix.length();
+            dfs(prefix, ix, wordQ);
             prefix.setLength(0);
-            expLen = 1;
         }
-
         return wordQ;
     }
 
-    private void dfs(StringBuilder prefix, byte pos, Queue<String> wordQ, HashSet<String> hshSet) {
+    private Queue<String> dfsQ() {
+        Queue<String> wordQ = new Queue<>();
+        StringBuilder prefix = new StringBuilder();
+
+        for (byte ix = 0; ix < this.n; ix++) {
+            char ch = this.graph[ix].ch;
+            prefix.append(ch);
+            if (ch == 'Q') prefix.append('U');
+            dfsQ(prefix, ix, wordQ);
+            prefix.setLength(0);
+        }
+        return wordQ;
+    }
+
+    private void dfs(StringBuilder prefix, byte pos, Queue<String> wordQ) {
         this.graph[pos].marked = true; // mark this node (die) as explored
 
         if (prefix.length() >= 3) { // Only interested in valid prefixes
             String pre = prefix.toString();
 
-            if (!hshSet.contains(pre)) {
+            if (!this.hshSet.contains(pre)) {
                 MyTrieSET.Node x = trieSet.get(pre);
-
-                if (x == null) return; // Dead end
+                if (x == null) return;
                 else if (x.isString) {
                     wordQ.enqueue(pre); // Yes, if current prefix is a valid
-                    hshSet.add(pre);
+                    this.hshSet.add(pre);
                 }
             }
         }
+        DNode node = this.graph[pos];
+        for (byte ix = 0; ix < node.numAdj; ix++) { // For each neighbors of node (at pos)
+            byte npos = node.adj[ix];               // Explore neighbor if not yet marked
 
+            if (!this.graph[npos].marked) {
+                prefix.append(this.graph[npos].ch);
+                dfs(prefix, npos, wordQ);
+                prefix.deleteCharAt(prefix.length() - 1);   // Remove last added Char
+                this.graph[npos].marked = false;
+            }
+        }
+        this.graph[pos].marked = false; // mark this node (die) as explored
+    }
+
+    // Handle Special case Qu
+    private void dfsQ(StringBuilder prefix, byte pos, Queue<String> wordQ) {
+        this.graph[pos].marked = true; // mark this node (die) as explored
+
+        if (prefix.length() >= 3) { // Only interested in valid prefixes
+            String pre = prefix.toString();
+
+            if (!this.hshSet.contains(pre)) {
+                MyTrieSET.Node x = trieSet.get(pre);
+                if (x == null) return; // Dead end
+                else if (x.isString) {
+                    wordQ.enqueue(pre); // Yes, if current prefix is a valid
+                    this.hshSet.add(pre);
+                }
+            }
+        }
         // if prefix ends with Q add U before exploring neighbors
         if (prefix.charAt(prefix.length() - 1) == 'Q') prefix.append('U');
 
@@ -218,19 +251,14 @@ public class BoggleSolver {
             if (!this.graph[npos].marked) {
                 prefix.append(this.graph[npos].ch);
                 if (this.graph[npos].ch == 'Q') prefix.append('U');
-
-                // Launch new search from npos
-                dfs(prefix, npos, wordQ, hshSet);
-                prefix.deleteCharAt(prefix.length() - 1);      // Remove last added Char
-
+                dfsQ(prefix, npos, wordQ);                  // Launch new search from npos
+                prefix.deleteCharAt(prefix.length() - 1);   // Remove last added Char
                 if (prefix.charAt(prefix.length() - 1) == 'Q') // is it a Q? we removed U...
                     prefix.deleteCharAt(prefix.length() - 1);  // ...remove it then
 
                 this.graph[npos].marked = false;
             }
         }
-
-        assert this.graph[pos].marked : "[Adj] Expected this.graph[ix].marked to be true";
         this.graph[pos].marked = false;
     }
 
