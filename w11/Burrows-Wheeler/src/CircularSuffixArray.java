@@ -4,65 +4,85 @@
  *  Description: CircularSuffixArray API
  **************************************************************************** */
 
-import java.util.Arrays;
-
 public class CircularSuffixArray {
-    private final CircularSuffix[] circSuffixes;
-            // Array of circular suffixes - package visibility?
-    private final int n; // number of characters is original string - package visibility?
+    private static final int CUTOFF = 0;
+    private final int[] circSuffixes;
+    private final int n; // number of characters is original string
+    private final String str;
 
     /*
      * Implement the CircularSuffixArray.
      * Be sure NOT to create new String objects when you sort the suffixes. That would take quadratic space.
-
-     * A natural approach is to define a nested class CircularSuffix that represents a circular suffix implicitly
-     * (via a reference to the input string and a pointer to the first character in the circular suffix).
-
+     *
      * The constructor of CircularSuffix should take constant time and use constant space.
      * You might also consider making CircularSuffix implement the Comparable<CircularSuffix> interface.
      * Note, that while this is, perhaps, the cleanest solution, it is not the fastest.
      *
      *
      */
-    private class CircularSuffix implements Comparable<CircularSuffix> {
-        final String str;
-        final int idx;
 
-        CircularSuffix(String s, int idx) {
-            this.str = s; // Just the reference
-            this.idx = idx;
+    private class Quick3StrSort {
+        private static final int CUTOFF = 15;
+        private final int[] ary;
+
+        public Quick3StrSort(int[] ary) {
+            this.ary = ary;
         }
 
-        public int compareTo(CircularSuffix that) {
-            if (this == that) return 0;  // optimization
+        public void sort() {
+            sort(0, n - 1, 0);
+        }
 
-            for (int ix = 0; ix < n; ix++) {
-                if (charAt(this.str, this.idx + ix) < charAt(that.str, that.idx + ix)) return -1;
-                if (charAt(this.str, this.idx + ix) > charAt(that.str, that.idx + ix)) return +1;
+        // return the d-th character of s, -1 if d = length of s
+        private int charAt(int ix, int d) {
+            assert d >= 0 && d <= n;
+            if (d == str.length()) return -1;
+            return str.charAt((ix + d) % n);
+        }
+
+        private void sort(int lo, int hi, int d) {
+            // cutoff to insertion sort for small subarrays
+            if (hi <= lo + CUTOFF) {
+                insertion(lo, hi, d);
+                return;
             }
 
-            return 0;
+            int lt = lo, gt = hi;
+            int v = charAt(this.ary[lo], d);
+            int i = lo + 1;
+            while (i <= gt) {
+                int t = charAt(this.ary[i], d);
+                if (t < v) swap(lt++, i++);
+                else if (t > v) swap(i, gt--);
+                else i++;
+            }
+
+            // a[lo..lt-1] < v = a[lt..gt] < a[gt+1..hi].
+            sort(lo, lt - 1, d);
+            if (v >= 0) sort(lt, gt, d + 1);
+            sort(gt + 1, hi, d);
         }
 
-        public String str() {
-            return this.str;
+        private void insertion(int lo, int hi, int d) {
+            for (int i = lo; i <= hi; i++)
+                for (int j = i; j > lo && less(j, j - 1, d); j--)
+                    swap(j, j - 1);
         }
 
-        // Just for testing the idea
-        public String toString() {
-            StringBuilder s = new StringBuilder();
-            for (int ix = this.idx; ix < this.str.length(); ix++)
-                s.append(this.str.charAt(ix));
-
-            for (int ix = 0; ix < this.idx; ix++)
-                s.append(this.str.charAt(ix));
-
-            assert s.length() == this.str.length();
-            return s.toString();
+        private boolean less(int v, int w, int d) {
+            for (int ix = d; ix < n; ix++) {
+                if (charAt(this.ary[v], ix) < charAt(this.ary[w], ix))
+                    return true;
+                if (charAt(this.ary[v], ix) > charAt(this.ary[w], ix))
+                    return false;
+            }
+            return false; // v.length() < w.length();
         }
 
-        private char charAt(String s, int ix) {
-            return s.charAt(ix % n);
+        private void swap(int i, int j) {
+            int tmp = this.ary[i];
+            this.ary[i] = this.ary[j];
+            this.ary[j] = tmp;
         }
     }
 
@@ -71,16 +91,16 @@ public class CircularSuffixArray {
         if (s == null)
             throw new IllegalArgumentException("the input string cannot be null");
 
+        this.str = s;
         this.n = s.length();
-        this.circSuffixes = new CircularSuffix[n];
+        this.circSuffixes = new int[n];
 
         // build array of n-suffixes
         for (int i = 0; i < n; i++) {
-            this.circSuffixes[i] = new CircularSuffix(s, i);
+            this.circSuffixes[i] = i;
         }
-
-        // sort
-        Arrays.sort(this.circSuffixes);
+        Quick3StrSort qst = new Quick3StrSort(this.circSuffixes);
+        qst.sort();
     }
 
     // length of s
@@ -92,8 +112,7 @@ public class CircularSuffixArray {
     public int index(int ix) {
         if (ix < 0 || ix >= this.n)
             throw new IllegalArgumentException("Out of bounds");
-
-        return this.circSuffixes[ix].idx; // this.index[ix];
+        return this.circSuffixes[ix];
     }
 
     // unit testing (required)
@@ -111,9 +130,21 @@ public class CircularSuffixArray {
         System.out.println("\nDone...");
     }
 
+    private String makeStr(int jx) {
+        StringBuilder s = new StringBuilder();
+        for (int ix = jx; ix < str.length(); ix++)
+            s.append(str.charAt(ix));
+
+        for (int ix = 0; ix < jx; ix++)
+            s.append(str.charAt(ix));
+
+        assert s.length() == str.length();
+        return s.toString();
+    }
+
     private void myprint() {
         for (int ix = 0; ix < this.n; ix++) {
-            System.out.println(this.circSuffixes[ix] + " / " + this.circSuffixes[ix].idx);
+            System.out.println(makeStr(this.circSuffixes[ix]) + " / " + this.circSuffixes[ix]);
         }
     }
 }
